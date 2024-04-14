@@ -42,6 +42,12 @@ export default {
     const geoMarker = ref(null);
 
     const getGeolocation = () => {
+      //check session storage for coords
+      if (sessionStorage.geItem("coords")) {
+        coords.value = JSON.parse(sessionStorage.getItem("coords"));
+        plotGeolocation(coords.value);
+        return;
+      }
       fetchCoords.value = true;
       navigator.geolocation.getCurrentPosition(setCoords, getLocError);
     };
@@ -56,15 +62,36 @@ export default {
         lng: position.coords.longitude,
       };
 
-      setSessionStorage.setItem("coords", JSON.stringify(setSessionCoords));
+      sessionStorage.setItem("coords", JSON.stringify(setSessionCoords));
 
       //Set ref coords value
       coords.value = setSessionCoords;
+
+      //plot the user's location on leaflet
+      plotGeolocation(coords.value);
     };
 
     const getLocError = (err) => {
       console.log(err);
     };
+
+    const plotGeolocation = (coords) => {
+      //create custom marker
+      const customMarker = leaflet.icon({
+        iconUrl: require("../assets/map-marker-red.svg"),
+        iconSize: [35, 35],
+      });
+      //create new marker with coords and custom icon
+      geoMarker.value = leaflet
+        .marker([coords.lat, coords.lng], {
+          icon: customMarker,
+        })
+        .addTo(map);
+
+      //set map view to current location
+      map.setView([coords.lat, coords.lng], 10);
+    };
+    return { coords, geoMarker };
   },
 };
 </script>
