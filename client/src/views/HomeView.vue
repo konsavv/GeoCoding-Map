@@ -5,6 +5,11 @@
       :geoErrorMessage="geoErrorMessage"
       @closeGeoError="closeGeoError"
     />
+    <MapFeature
+      :coords="coords"
+      :fetchCoords="fetchCoords"
+      @getGeolocation="getGeolocation"
+    />
     <div id="map" class="h-full z-[1]"></div>
   </div>
 </template>
@@ -13,9 +18,10 @@
 import leaflet from "leaflet";
 import { onMounted, ref } from "vue";
 import GeoErrorModal from "@/components/GeoErrorModal.vue";
+import MapFeature from "@/components/MapFeature.vue";
 export default {
   name: "HomeView",
-  components: { GeoErrorModal },
+  components: { GeoErrorModal, MapFeature },
   setup() {
     let map;
     onMounted(() => {
@@ -50,6 +56,12 @@ export default {
     const geoErrorMessage = ref(null);
 
     const getGeolocation = () => {
+      if (coords.value) {
+        coords.value = null;
+        sessionStorage.removeItem("coords");
+        map.removeLayer(geoMarker.value);
+        return;
+      }
       //check session storage for coords
       if (sessionStorage.getItem("coords")) {
         coords.value = JSON.parse(sessionStorage.getItem("coords"));
@@ -107,7 +119,15 @@ export default {
       geoErrorMessage.value = null;
     };
 
-    return { coords, geoMarker, geoError, geoErrorMessage, closeGeoError };
+    return {
+      coords,
+      fetchCoords,
+      geoMarker,
+      geoError,
+      geoErrorMessage,
+      closeGeoError,
+      getGeolocation,
+    };
   },
 };
 </script>
