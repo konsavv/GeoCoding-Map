@@ -10,6 +10,7 @@
         type="text"
         placeholder="Start your search"
         v-model="searchQuery"
+        @input="search"
       />
       <!-- Search Icon -->
       <div class="absolute top-0 left-[8px] h-full flex items-center">
@@ -45,6 +46,7 @@
 
 <script>
 import { ref } from "vue";
+import axios from "axios";
 export default {
   props: ["coords", "fetchCoords"],
   setup(props) {
@@ -56,7 +58,8 @@ export default {
     const queryTimeout = ref(null);
 
     const search = () => {
-      queryTimeout.value = setTimeout(() => {
+      clearTimeout(queryTimeout.value);
+      queryTimeout.value = setTimeout(async () => {
         if (searchQuery.value !== "") {
           const params = new URLSearchParams({
             fuzzyMatch: true,
@@ -66,11 +69,16 @@ export default {
               ? `${props.coords.lng}, ${props.coords.lat}`
               : "0,0",
           });
+          const getData = await axios.get(
+            `http://localhost:3000/api/search/${searchQuery.value}?${params}`
+          );
+          searchData.value = getData.data.features;
+          console.log(searchData.value);
         }
       }, 750);
     };
 
-    return { searchData, searchQuery, queryTimeout };
+    return { searchData, searchQuery, queryTimeout, search };
   },
 };
 </script>
