@@ -9,6 +9,9 @@
       :coords="coords"
       :fetchCoords="fetchCoords"
       @getGeolocation="getGeolocation"
+      @plotResult="plotResult"
+      @toggleSearchResults="toggleSearchResults"
+      :searchResults="searchResults"
     />
     <div id="map" class="h-full z-[1]"></div>
   </div>
@@ -43,6 +46,9 @@ export default {
           }
         )
         .addTo(map);
+      map.on("moveend", () => {
+        closeSearchResults();
+      });
 
       getGeolocation();
     });
@@ -118,6 +124,36 @@ export default {
       geoError.value = null;
       geoErrorMessage.value = null;
     };
+    const resultMarker = ref(null);
+    const plotResult = (coords) => {
+      //Check to see if resultMarker has value
+      if (resultMarker.value) {
+        map.removeLayer(resultMarker.value);
+      }
+      //create custom marker
+      const customMarker = leaflet.icon({
+        iconUrl: require("../assets/map-marker-blue.svg"),
+        iconSize: [35, 35],
+      });
+      //create new marker with coords and custom icon
+      resultMarker.value = leaflet
+        .marker([coords.coordinates[1], coords.coordinates[0]], {
+          icon: customMarker,
+        })
+        .addTo(map);
+
+      //set map view to current location
+      map.setView([coords.coordinates[1], coords.coordinates[0]], 14);
+      closeSearchResults();
+    };
+
+    const searchResults = ref(null);
+    const toggleSearchResults = () => {
+      searchResults.value = !searchResults.value;
+    };
+    const closeSearchResults = () => {
+      searchResults.value = null;
+    };
 
     return {
       coords,
@@ -127,6 +163,10 @@ export default {
       geoErrorMessage,
       closeGeoError,
       getGeolocation,
+      plotResult,
+      searchResults,
+      toggleSearchResults,
+      closeSearchResults,
     };
   },
 };
