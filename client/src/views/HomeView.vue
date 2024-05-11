@@ -12,6 +12,7 @@
       @plotResult="plotResult"
       @toggleSearchResults="toggleSearchResults"
       :searchResults="searchResults"
+      @removeResult="removeResult"
     />
     <div id="map" class="h-full z-[1]"></div>
   </div>
@@ -151,8 +152,13 @@ export default {
     const toggleSearchResults = () => {
       searchResults.value = !searchResults.value;
     };
+
     const closeSearchResults = () => {
       searchResults.value = null;
+    };
+
+    const removeResult = () => {
+      map.removeLayer(resultMarker.value);
     };
 
     return {
@@ -167,6 +173,7 @@ export default {
       searchResults,
       toggleSearchResults,
       closeSearchResults,
+      removeResult,
     };
   },
 };
