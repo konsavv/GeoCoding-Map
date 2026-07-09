@@ -13,6 +13,8 @@
       @openSearchResults="openSearchResults"
       :searchResults="searchResults"
       @removeResult="removeResult"
+      :routeInfo="routeInfo"
+      @getDirections="getDirections"
     />
     <div id="map" class="h-full z-[1]"></div>
     <!-- Map style switcher -->
@@ -39,6 +41,7 @@
 <script>
 import leaflet from "leaflet";
 import { onMounted, ref } from "vue";
+import axios from "axios";
 import GeoErrorModal from "@/components/GeoErrorModal.vue";
 import MapFeature from "@/components/MapFeature.vue";
 export default {
@@ -169,11 +172,27 @@ export default {
       geoErrorMessage.value = null;
     };
     const resultMarker = ref(null);
+    //directions state
+    let routeLayer;
+    let lastDestination = null;
+    const routeInfo = ref(null);
+
+    const clearRoute = () => {
+      if (routeLayer) {
+        map.removeLayer(routeLayer);
+        routeLayer = null;
+      }
+      routeInfo.value = null;
+    };
+
     const plotResult = (coords) => {
       //Check to see if resultMarker has value
       if (resultMarker.value) {
         map.removeLayer(resultMarker.value);
       }
+      //a new destination clears any previous route
+      clearRoute();
+      lastDestination = coords.coordinates;
       //create custom marker
       const customMarker = leaflet.icon({
         iconUrl: require("../assets/map-marker-blue.svg"),
@@ -191,6 +210,43 @@ export default {
       closeSearchResults();
     };
 
+    //fetch + draw a route from the user's location to the selected result
+    const getDirections = async (profile = "driving") => {
+      if (!lastDestination) return;
+      if (!coords.value) {
+        routeInfo.value = {
+          error: "Enable your location (arrow button) to get directions.",
+        };
+        return;
+      }
+      try {
+        const origin = `${coords.value.lng},${coords.value.lat}`;
+        const dest = `${lastDestination[0]},${lastDestination[1]}`;
+        const { data } = await axios.get(
+          `http://localhost:3000/api/directions/${origin};${dest}?profile=${profile}`
+        );
+        if (!data.routes || !data.routes.length) {
+          routeInfo.value = { error: "No route found." };
+          return;
+        }
+        const route = data.routes[0];
+        if (routeLayer) map.removeLayer(routeLayer);
+        routeLayer = leaflet
+          .geoJSON(route.geometry, {
+            style: { color: "#2563eb", weight: 5, opacity: 0.8 },
+          })
+          .addTo(map);
+        map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
+        routeInfo.value = {
+          distance: route.distance,
+          duration: route.duration,
+          profile,
+        };
+      } catch (err) {
+        routeInfo.value = { error: "Could not get directions." };
+      }
+    };
+
     const searchResults = ref(null);
     const openSearchResults = () => {
       searchResults.value = true;
@@ -205,6 +261,7 @@ export default {
         map.removeLayer(resultMarker.value);
         resultMarker.value = null;
       }
+      clearRoute();
     };
 
     return {
@@ -223,6 +280,8 @@ export default {
       mapStyle,
       mapStyles,
       changeMapStyle,
+      routeInfo,
+      getDirections,
     };
   },
 };

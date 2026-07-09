@@ -69,6 +69,35 @@
           <p v-if="selectedResult.properties?.category" class="text-xs">
             {{ selectedResult.properties.category }}
           </p>
+          <!-- Directions -->
+          <div class="mt-3 border-t pt-2">
+            <div class="flex gap-2">
+              <button
+                @click="$emit('getDirections', 'driving')"
+                class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
+              >
+                <i class="fas fa-car"></i> Drive
+              </button>
+              <button
+                @click="$emit('getDirections', 'walking')"
+                class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
+              >
+                <i class="fas fa-person-walking"></i> Walk
+              </button>
+            </div>
+            <p
+              v-if="routeInfo && !routeInfo.error"
+              class="text-xs mt-2 text-slate-700"
+            >
+              <i class="fas fa-route"></i>
+              {{ (routeInfo.distance / 1000).toFixed(1) }} km ·
+              {{ Math.round(routeInfo.duration / 60) }} min
+              <span class="text-slate-400">({{ routeInfo.profile }})</span>
+            </p>
+            <p v-if="routeInfo && routeInfo.error" class="text-xs mt-2 text-red-500">
+              {{ routeInfo.error }}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -92,7 +121,7 @@ import { ref, nextTick } from "vue";
 import axios from "axios";
 import LoadingSpinner from "./LoadingSpinner";
 export default {
-  props: ["coords", "fetchCoords", "searchResults"],
+  props: ["coords", "fetchCoords", "searchResults", "routeInfo"],
   components: { LoadingSpinner },
   setup(props, { emit }) {
     //search value that user is typing
