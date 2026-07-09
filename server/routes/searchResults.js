@@ -12,7 +12,7 @@ router.get('/:query', async (req, res) => {
 
     // format data to include city and state
     results.data.features.forEach((item) => {
-      item.context.forEach((type) => {
+      item.context?.forEach((type) => {
         if (type.id.includes("place")) {
           item.city = item.text;
         }
