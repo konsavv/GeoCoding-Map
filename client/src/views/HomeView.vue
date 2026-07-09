@@ -10,7 +10,7 @@
       :fetchCoords="fetchCoords"
       @getGeolocation="getGeolocation"
       @plotResult="plotResult"
-      @toggleSearchResults="toggleSearchResults"
+      @openSearchResults="openSearchResults"
       :searchResults="searchResults"
       @removeResult="removeResult"
     />
@@ -149,8 +149,8 @@ export default {
     };
 
     const searchResults = ref(null);
-    const toggleSearchResults = () => {
-      searchResults.value = !searchResults.value;
+    const openSearchResults = () => {
+      searchResults.value = true;
     };
 
     const closeSearchResults = () => {
@@ -158,7 +158,10 @@ export default {
     };
 
     const removeResult = () => {
-      map.removeLayer(resultMarker.value);
+      if (resultMarker.value) {
+        map.removeLayer(resultMarker.value);
+        resultMarker.value = null;
+      }
     };
 
     return {
@@ -171,7 +174,7 @@ export default {
       getGeolocation,
       plotResult,
       searchResults,
-      toggleSearchResults,
+      openSearchResults,
       closeSearchResults,
       removeResult,
     };

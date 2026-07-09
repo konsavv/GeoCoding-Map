@@ -11,7 +11,7 @@
         placeholder="Start your search"
         v-model="searchQuery"
         @input="search"
-        @focus="$emit('toggleSearchResults')"
+        @focus="$emit('openSearchResults')"
         @keydown.down.prevent="onArrowDown"
         @keydown.up.prevent="onArrowUp"
         @keydown.enter.prevent="onEnter"
@@ -50,16 +50,25 @@
           v-if="selectedResult"
           class="mt-[8px] px-4 py-3 bg-white rounded-md"
         >
-          <i
-            @click="removeResult"
-            class="flex justify-end far fa-times-circle"
-          ></i>
-          <h1 class="text-lg">{{ selectedResult.text }}</h1>
-          <p class="text-xs mb-1">
-            {{ selectedResult.properties.address }}, {{ selectedResult.city }},
-            {{ selectedResult.state }}
+          <div class="flex justify-between items-start gap-2">
+            <h1 class="text-lg">{{ selectedResult.text }}</h1>
+            <i
+              @click="removeResult"
+              class="far fa-times-circle cursor-pointer shrink-0 mt-1"
+            ></i>
+          </div>
+          <p
+            v-if="
+              selectedResult.place_name_en &&
+              selectedResult.place_name_en !== selectedResult.text
+            "
+            class="text-xs mb-1"
+          >
+            {{ selectedResult.place_name_en }}
           </p>
-          <p class="text-xs">{{ selectedResult.properties.category }}</p>
+          <p v-if="selectedResult.properties?.category" class="text-xs">
+            {{ selectedResult.properties.category }}
+          </p>
         </div>
       </div>
     </div>
@@ -103,6 +112,16 @@ export default {
       clearTimeout(queryTimeout.value);
       searchData.value = null;
       highlightedIndex.value = -1;
+      //keep the results dropdown open while typing (e.g. after a prior selection)
+      emit("openSearchResults");
+      //emptying the search box resets any active selection + map marker
+      if (!searchQuery.value) {
+        if (selectedResult.value) {
+          selectedResult.value = null;
+          emit("removeResult");
+        }
+        return;
+      }
       queryTimeout.value = setTimeout(async () => {
         if (searchQuery.value !== "") {
           const params = new URLSearchParams({
@@ -124,11 +143,16 @@ export default {
 
     const selectResult = (result) => {
       selectedResult.value = result;
+      //reflect the chosen place in the input instead of the partial query
+      searchQuery.value = result.text;
       emit("plotResult", result.geometry);
     };
 
     const removeResult = () => {
       selectedResult.value = null;
+      //also clear the search box and any stale results
+      searchQuery.value = null;
+      searchData.value = null;
       emit("removeResult");
     };
 
