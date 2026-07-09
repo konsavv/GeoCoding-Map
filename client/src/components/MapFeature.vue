@@ -12,6 +12,10 @@
         v-model="searchQuery"
         @input="search"
         @focus="$emit('toggleSearchResults')"
+        @keydown.down.prevent="onArrowDown"
+        @keydown.up.prevent="onArrowUp"
+        @keydown.enter.prevent="onEnter"
+        @keydown.esc="onEsc"
       />
       <!-- Search Icon -->
       <div class="absolute top-0 left-[8px] h-full flex items-center">
@@ -22,16 +26,19 @@
         <!-- Results -->
         <div
           v-if="searchQuery && searchResults"
+          ref="scrollContainer"
           class="h-[200px] overflow-scroll bg-white rounded-md"
         >
           <!-- Loading -->
           <LoadingSpinner v-if="!searchData" />
           <div v-else>
             <div
-              class="px-4 py-2 flex gap-x-2 cursor-pointer hover:bg-slate-600 hover:text-white"
+              class="result-item px-4 py-2 flex gap-x-2 cursor-pointer hover:bg-slate-600 hover:text-white"
+              :class="{ 'bg-slate-600 text-white': index === highlightedIndex }"
               v-for="(result, index) in searchData"
               :key="index"
               @click="selectResult(result)"
+              @mouseenter="highlightedIndex = index"
             >
               <i class="fas fa-map-marker-alt"></i>
               <p class="text-xs">{{ result.place_name_en }}</p>
@@ -72,7 +79,7 @@
 </template>
 
 <script>
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 import axios from "axios";
 import LoadingSpinner from "./LoadingSpinner";
 export default {
@@ -87,10 +94,15 @@ export default {
     const queryTimeout = ref(null);
     //store user selected results
     const selectedResult = ref(null);
+    //keyboard-highlighted result index (-1 = none)
+    const highlightedIndex = ref(-1);
+    //ref to the scrollable results container
+    const scrollContainer = ref(null);
 
     const search = () => {
       clearTimeout(queryTimeout.value);
       searchData.value = null;
+      highlightedIndex.value = -1;
       queryTimeout.value = setTimeout(async () => {
         if (searchQuery.value !== "") {
           const params = new URLSearchParams({
@@ -120,6 +132,43 @@ export default {
       emit("removeResult");
     };
 
+    //scroll the highlighted item into view within the dropdown
+    const scrollHighlightedIntoView = () => {
+      nextTick(() => {
+        const items = scrollContainer.value?.querySelectorAll(".result-item");
+        items?.[highlightedIndex.value]?.scrollIntoView({ block: "nearest" });
+      });
+    };
+
+    //move highlight down (wraps to top)
+    const onArrowDown = () => {
+      if (!searchData.value || !searchData.value.length) return;
+      highlightedIndex.value =
+        (highlightedIndex.value + 1) % searchData.value.length;
+      scrollHighlightedIntoView();
+    };
+
+    //move highlight up (wraps to bottom)
+    const onArrowUp = () => {
+      if (!searchData.value || !searchData.value.length) return;
+      highlightedIndex.value =
+        highlightedIndex.value <= 0
+          ? searchData.value.length - 1
+          : highlightedIndex.value - 1;
+      scrollHighlightedIntoView();
+    };
+
+    //select the currently highlighted result
+    const onEnter = () => {
+      const result = searchData.value?.[highlightedIndex.value];
+      if (result) selectResult(result);
+    };
+
+    //clear the highlight
+    const onEsc = () => {
+      highlightedIndex.value = -1;
+    };
+
     return {
       searchData,
       searchQuery,
@@ -128,6 +177,12 @@ export default {
       selectResult,
       selectedResult,
       removeResult,
+      highlightedIndex,
+      scrollContainer,
+      onArrowDown,
+      onArrowUp,
+      onEnter,
+      onEsc,
     };
   },
 };
