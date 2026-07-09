@@ -15,6 +15,24 @@
       @removeResult="removeResult"
     />
     <div id="map" class="h-full z-[1]"></div>
+    <!-- Map style switcher -->
+    <div
+      class="absolute bottom-[26px] left-[10px] z-[2] flex rounded-md overflow-hidden shadow-md text-xs"
+    >
+      <button
+        v-for="style in mapStyles"
+        :key="style.id"
+        @click="changeMapStyle(style.id)"
+        class="px-3 py-2 transition-colors"
+        :class="
+          mapStyle === style.id
+            ? 'bg-slate-600 text-white'
+            : 'bg-white text-slate-700 hover:bg-slate-100'
+        "
+      >
+        {{ style.label }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -28,18 +46,27 @@ export default {
   components: { GeoErrorModal, MapFeature },
   setup() {
     let map;
-    onMounted(() => {
-      //init map
-      map = leaflet.map("map").setView([28.538336, -81.379234], 10);
+    //currently applied tile layer, kept so we can swap it on style change
+    let currentTileLayer;
+    //available map styles for the switcher
+    const mapStyles = [
+      { id: "mapbox/streets-v11", label: "Streets" },
+      { id: "mapbox/satellite-streets-v12", label: "Satellite" },
+      { id: "mapbox/dark-v11", label: "Dark" },
+    ];
+    const mapStyle = ref(mapStyles[0].id);
 
-      //add tile layer
-      leaflet
+    const applyMapStyle = (styleId) => {
+      if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+      }
+      currentTileLayer = leaflet
         .tileLayer(
           `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${process.env.VUE_APP_API_KEY}`,
           {
             accessToken: process.env.VUE_APP_API_KEY,
             maxZoom: 18,
-            id: "mapbox/streets-v11",
+            id: styleId,
             tileSize: 512,
             zoomOffset: -1,
             attribution:
@@ -47,6 +74,22 @@ export default {
           }
         )
         .addTo(map);
+      mapStyle.value = styleId;
+    };
+
+    const changeMapStyle = (styleId) => {
+      if (styleId !== mapStyle.value) {
+        applyMapStyle(styleId);
+      }
+    };
+
+    onMounted(() => {
+      //init map
+      map = leaflet.map("map").setView([28.538336, -81.379234], 10);
+
+      //add the default tile layer
+      applyMapStyle(mapStyle.value);
+
       map.on("moveend", () => {
         closeSearchResults();
       });
@@ -177,6 +220,9 @@ export default {
       openSearchResults,
       closeSearchResults,
       removeResult,
+      mapStyle,
+      mapStyles,
+      changeMapStyle,
     };
   },
 };
