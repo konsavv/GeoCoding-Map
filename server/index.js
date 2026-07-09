@@ -14,6 +14,7 @@ app.use(cors());
 //routes
 app.use('/api/search/', require('./routes/searchResults.js'));
 app.use('/api/directions/', require('./routes/directions.js'));
+app.use('/api/nearby/', require('./routes/nearby.js'));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

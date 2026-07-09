@@ -100,6 +100,17 @@
           </div>
         </div>
       </div>
+      <!-- Nearby category chips -->
+      <div class="flex gap-2 mt-2 overflow-x-auto pb-1">
+        <button
+          v-for="cat in categories"
+          :key="cat.query"
+          @click="$emit('searchNearby', cat.query)"
+          class="whitespace-nowrap px-3 py-1 text-xs rounded-full bg-white shadow-md hover:bg-slate-100"
+        >
+          {{ cat.label }}
+        </button>
+      </div>
     </div>
 
     <!-- Geolocation -->
@@ -136,6 +147,15 @@ export default {
     const highlightedIndex = ref(-1);
     //ref to the scrollable results container
     const scrollContainer = ref(null);
+    //quick "nearby" categories (label + Mapbox POI query)
+    const categories = [
+      { label: "☕ Coffee", query: "coffee" },
+      { label: "🍽️ Food", query: "restaurant" },
+      { label: "🏨 Hotels", query: "hotel" },
+      { label: "⛽ Gas", query: "gas_station" },
+      { label: "🏧 ATM", query: "atm" },
+      { label: "💊 Pharmacy", query: "pharmacy" },
+    ];
 
     const search = () => {
       clearTimeout(queryTimeout.value);
@@ -230,6 +250,7 @@ export default {
       selectResult,
       selectedResult,
       removeResult,
+      categories,
       highlightedIndex,
       scrollContainer,
       onArrowDown,

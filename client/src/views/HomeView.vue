@@ -15,6 +15,7 @@
       @removeResult="removeResult"
       :routeInfo="routeInfo"
       @getDirections="getDirections"
+      @searchNearby="searchNearby"
     />
     <div id="map" class="h-full z-[1]"></div>
     <!-- Map style switcher -->
@@ -247,6 +248,40 @@ export default {
       }
     };
 
+    //find nearby POIs of a category around the user's location (or map center)
+    let poiLayer;
+    const searchNearby = async (category) => {
+      const center = coords.value || {
+        lng: map.getCenter().lng,
+        lat: map.getCenter().lat,
+      };
+      try {
+        const { data } = await axios.get(
+          `http://localhost:3000/api/nearby/${category}?proximity=${center.lng},${center.lat}`
+        );
+        if (poiLayer) map.removeLayer(poiLayer);
+        if (!data.features || !data.features.length) return;
+        poiLayer = leaflet.featureGroup();
+        data.features.forEach((poi) => {
+          const [lng, lat] = poi.geometry.coordinates;
+          leaflet
+            .circleMarker([lat, lng], {
+              radius: 7,
+              color: "#fff",
+              weight: 2,
+              fillColor: "#f59e0b",
+              fillOpacity: 1,
+            })
+            .bindPopup(poi.properties.name)
+            .addTo(poiLayer);
+        });
+        poiLayer.addTo(map);
+        map.fitBounds(poiLayer.getBounds(), { padding: [60, 60] });
+      } catch (err) {
+        // silently ignore nearby-search errors
+      }
+    };
+
     const searchResults = ref(null);
     const openSearchResults = () => {
       searchResults.value = true;
@@ -282,6 +317,7 @@ export default {
       changeMapStyle,
       routeInfo,
       getDirections,
+      searchNearby,
     };
   },
 };
