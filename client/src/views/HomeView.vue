@@ -211,20 +211,23 @@ export default {
       closeSearchResults();
     };
 
-    //fetch + draw a route from the user's location to the selected result
-    const getDirections = async (profile = "driving") => {
+    //fetch + draw a route to the selected result. origin (a typed start
+    //point [lng, lat]) wins; otherwise fall back to the user's location.
+    const getDirections = async (profile = "driving", origin = null) => {
       if (!lastDestination) return;
-      if (!coords.value) {
+      const start =
+        origin || (coords.value ? [coords.value.lng, coords.value.lat] : null);
+      if (!start) {
         routeInfo.value = {
-          error: "Enable your location (arrow button) to get directions.",
+          error: "Type a start point, or enable your location (arrow button).",
         };
         return;
       }
       try {
-        const origin = `${coords.value.lng},${coords.value.lat}`;
+        const originStr = `${start[0]},${start[1]}`;
         const dest = `${lastDestination[0]},${lastDestination[1]}`;
         const { data } = await axios.get(
-          `http://localhost:3000/api/directions/${origin};${dest}?profile=${profile}`
+          `http://localhost:3000/api/directions/${originStr};${dest}?profile=${profile}`
         );
         if (!data.routes || !data.routes.length) {
           routeInfo.value = { error: "No route found." };
@@ -232,11 +235,18 @@ export default {
         }
         const route = data.routes[0];
         if (routeLayer) map.removeLayer(routeLayer);
-        routeLayer = leaflet
-          .geoJSON(route.geometry, {
-            style: { color: "#2563eb", weight: 5, opacity: 0.8 },
-          })
-          .addTo(map);
+        const line = leaflet.geoJSON(route.geometry, {
+          style: { color: "#2563eb", weight: 5, opacity: 0.8 },
+        });
+        //green dot marks the start of the route
+        const startMarker = leaflet.circleMarker([start[1], start[0]], {
+          radius: 7,
+          color: "#fff",
+          weight: 2,
+          fillColor: "#16a34a",
+          fillOpacity: 1,
+        });
+        routeLayer = leaflet.featureGroup([line, startMarker]).addTo(map);
         map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
         routeInfo.value = {
           distance: route.distance,

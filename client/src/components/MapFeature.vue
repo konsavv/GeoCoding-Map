@@ -80,15 +80,38 @@
           </p>
           <!-- Directions -->
           <div class="mt-3 border-t pt-2">
+            <!-- From (start point) -->
+            <div class="relative mb-2">
+              <input
+                v-model="fromQuery"
+                @input="searchFrom"
+                type="text"
+                placeholder="From: your location, or type a start"
+                class="w-full px-2 py-1 text-xs border border-slate-300 rounded focus:outline-none"
+              />
+              <div
+                v-if="fromData && fromData.length"
+                class="absolute z-10 mt-1 w-full max-h-[120px] overflow-auto bg-white rounded-md shadow-md"
+              >
+                <div
+                  v-for="(f, i) in fromData"
+                  :key="i"
+                  @click="selectFrom(f)"
+                  class="px-2 py-1 text-xs cursor-pointer hover:bg-slate-100"
+                >
+                  {{ f.place_name_en }}
+                </div>
+              </div>
+            </div>
             <div class="flex gap-2">
               <button
-                @click="$emit('getDirections', 'driving')"
+                @click="requestDirections('driving')"
                 class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
               >
                 <i class="fas fa-car"></i> Drive
               </button>
               <button
-                @click="$emit('getDirections', 'walking')"
+                @click="requestDirections('walking')"
                 class="flex items-center gap-1 px-2 py-1 text-xs rounded bg-slate-100 hover:bg-slate-200"
               >
                 <i class="fas fa-person-walking"></i> Walk
@@ -167,6 +190,11 @@ export default {
       { label: "🏧 ATM", query: "atm" },
       { label: "💊 Pharmacy", query: "pharmacy" },
     ];
+    //"From" (start point) autocomplete for directions
+    const fromQuery = ref("");
+    const fromData = ref(null);
+    const fromSelected = ref(null);
+    const fromTimeout = ref(null);
 
     const search = () => {
       clearTimeout(queryTimeout.value);
@@ -207,6 +235,51 @@ export default {
       }, 750);
     };
 
+    //debounced geocoding search for the "From" start-point field
+    const searchFrom = () => {
+      clearTimeout(fromTimeout.value);
+      fromData.value = null;
+      fromSelected.value = null;
+      if (!fromQuery.value) return;
+      fromTimeout.value = setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({
+            fuzzyMatch: true,
+            language: "en",
+            limit: 5,
+            proximity: props.coords
+              ? `${props.coords.lng},${props.coords.lat}`
+              : "0,0",
+          });
+          const { data } = await axios.get(
+            `http://localhost:3000/api/search/${fromQuery.value}?${params}`
+          );
+          fromData.value = data.features;
+        } catch (err) {
+          fromData.value = [];
+        }
+      }, 600);
+    };
+
+    //pick a start point from the "From" suggestions
+    const selectFrom = (result) => {
+      fromSelected.value = {
+        name: result.place_name_en,
+        center: result.center,
+      };
+      fromQuery.value = result.place_name_en;
+      fromData.value = null;
+    };
+
+    //ask the parent for directions; pass the chosen start (or null = my location)
+    const requestDirections = (profile) => {
+      emit(
+        "getDirections",
+        profile,
+        fromSelected.value ? fromSelected.value.center : null
+      );
+    };
+
     const selectResult = (result) => {
       selectedResult.value = result;
       //reflect the chosen place in the input instead of the partial query
@@ -219,6 +292,9 @@ export default {
       //also clear the search box and any stale results
       searchQuery.value = null;
       searchData.value = null;
+      fromQuery.value = "";
+      fromData.value = null;
+      fromSelected.value = null;
       emit("removeResult");
     };
 
@@ -269,6 +345,12 @@ export default {
       selectedResult,
       removeResult,
       categories,
+      fromQuery,
+      fromData,
+      fromSelected,
+      searchFrom,
+      selectFrom,
+      requestDirections,
       highlightedIndex,
       scrollContainer,
       onArrowDown,
